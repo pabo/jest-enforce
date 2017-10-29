@@ -13,3 +13,9 @@ $ jest-enforce
 
 ### Functionality
 The command line util calls `jestEnforce.checkMockImports()`, which inspects all `.spec` files under `./src` and tells you if you are not mocking modules you should be mocking.
+
+### TODO
+- allow configuration
+  - what imports are OK to ignore
+- fix multiline import statements
+- colorize output
