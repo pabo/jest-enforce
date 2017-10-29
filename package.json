@@ -2,18 +2,20 @@
   "name": "jest-enforce",
   "version": "1.0.0",
   "description": "check whether you're mocking what you should",
-  "main": "index.js",
-  "repository" : {
+  "main": "build/bundle.js",
+  "repository": {
     "type": "git",
     "url": "https://github.com/pabo/jest-enforce.git"
   },
   "scripts": {
+    "build": "node_modules/.bin/rollup -c rollup.config.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "brett.schellenberg@gmail.com",
   "license": "ISC",
-  "dependencies": {
-    "find-in-files": "~0.4.0"
+  "devDependencies": {
+    "find-in-files": "~0.4.0",
+    "rollup": "~0.50.0"
   },
   "bin": {
     "jest-enforce": "bin/jest-enforce.js"

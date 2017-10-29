@@ -1,5 +1,5 @@
 #! /usr/bin/env node
 
-const jestEnforce = require('../index.js');
+jestEnforce = require('../build/bundle.js');
 
 jestEnforce.checkMockImports();

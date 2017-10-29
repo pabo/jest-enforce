@@ -43,7 +43,7 @@ Promise.all([
 }
 
 function _differenceWithWhiteList(set1, set2, whitelist) {
-  whiteSet = new Set([...whitelist]);
+  const whiteSet = new Set([...whitelist]);
 
   const difference = new Set([...set1].filter(x => !set2.has(x)));
 
