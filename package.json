@@ -3,14 +3,17 @@
   "version": "1.0.0",
   "description": "check whether you're mocking what you should",
   "main": "index.js",
+  "repository" : {
+    "type": "git",
+    "url": "https://github.com/pabo/jest-enforce.git"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "brett.schellenberg@gmail.com",
   "license": "ISC",
   "dependencies": {
-    "find-in-files": "~0.4.0",
-    "recursive-readdir": "~2.2.1"
+    "find-in-files": "~0.4.0"
   },
   "bin": {
     "jest-enforce": "bin/jest-enforce.js"
