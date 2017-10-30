@@ -1,6 +1,6 @@
 {
   "name": "jest-enforce",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "check whether you're mocking what you should",
   "main": "build/bundle.js",
   "repository": {
