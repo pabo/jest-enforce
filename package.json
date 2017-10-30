@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "node_modules/.bin/rollup -c rollup.config.js",
+    "build-clean": "rm -rf node_modules && npm i && node_modules/.bin/rollup -c rollup.config.js",
     "build-dev": "node_modules/.bin/rollup -c rollup.config.js --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -16,7 +17,10 @@
   "license": "ISC",
   "devDependencies": {
     "find-in-files": "~0.4.0",
-    "rollup": "~0.50.0"
+    "rollup": "~0.50.0",
+    "rollup-plugin-commonjs": "~8.2.5",
+    "rollup-plugin-node-builtins": "~2.1.2",
+    "rollup-plugin-node-resolve": "~3.0.0"
   },
   "bin": {
     "jest-enforce": "bin/jest-enforce.js"
