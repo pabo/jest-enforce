@@ -6,7 +6,6 @@ const findInFiles = require('find-in-files');
 // read config from package.json
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 const config = packageJson['jest-enforce'];
-console.log(config);
 const { whitelistedLibraries = [] } = config;
 
 function checkMockImports() {
