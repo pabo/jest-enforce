@@ -49,5 +49,6 @@ scripts": {
 ### TODO
 - [x] allow configuration
   - [x] what imports are OK to ignore
+- [ ] direct imports in .spec files will import `__mocks__` if they exist, so should be fine
 - [ ] fix multiline import statements
-- [ ] colorize output
+- [x] colorize output

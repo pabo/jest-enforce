@@ -7,7 +7,14 @@ export default {
     file: 'build/bundle.js',
     format: 'cjs'
   },
-  external: ['fs', 'path'],
+  external: [
+    // built ins
+    'assert',
+    'events',
+    'fs',
+    'path',
+    'util'
+  ],
   plugins: [
     resolve(),
     commonjs()

@@ -16,7 +16,9 @@
   "author": "brett.schellenberg@gmail.com",
   "license": "ISC",
   "devDependencies": {
+    "colors": "~1.1.2",
     "find-in-files": "~0.4.0",
+    "glob": "~7.1.2",
     "rollup": "~0.50.0",
     "rollup-plugin-commonjs": "~8.2.5",
     "rollup-plugin-node-builtins": "~2.1.2",
