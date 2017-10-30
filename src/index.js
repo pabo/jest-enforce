@@ -1,11 +1,11 @@
-// const recursive = require('recursive-readdir');
-// const readline = require('readline');
+// const fs = require('fs');
+// const findInFiles = require('find-in-files');
 import fs from 'fs';
 import findInFiles from 'find-in-files';
 
 // read config from package.json
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-const config = packageJson['jest-enforce'];
+const config = packageJson['jest-enforce'] || {};
 const { whitelistedLibraries = [] } = config;
 
 function checkMockImports() {
