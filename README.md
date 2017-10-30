@@ -28,6 +28,17 @@ You can add a configuration to your `package.json` file:
 }
 ```
 
+I like to add jest-enforce to the end of my `npm run test` command:
+```
+scripts": {
+    "start": "node scripts/start.js",
+    "build-react": "node scripts/build.js",
+    "build": "rm -rf plugin-build && webpack --config build-utils/webpack.build.plugin.js && npm run test",
+    "test": "node scripts/test.js --coverage && jest-enforce",
+  },
+```
+
+
 ### TODO
 - [x] allow configuration
   - [x] what imports are OK to ignore
