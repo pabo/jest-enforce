@@ -21,7 +21,6 @@
     "glob": "~7.1.2",
     "rollup": "~0.50.0",
     "rollup-plugin-commonjs": "~8.2.5",
-    "rollup-plugin-node-builtins": "~2.1.2",
     "rollup-plugin-node-resolve": "~3.0.0"
   },
   "bin": {
