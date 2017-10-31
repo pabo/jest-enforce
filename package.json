@@ -15,8 +15,10 @@
   },
   "author": "brett.schellenberg@gmail.com",
   "license": "ISC",
+  "dependencies": {
+    "colors": "~1.1.2"
+  },
   "devDependencies": {
-    "colors": "~1.1.2",
     "find-in-files": "~0.4.0",
     "glob": "~7.1.2",
     "rollup": "~0.50.0",
