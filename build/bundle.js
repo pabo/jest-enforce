@@ -5770,8 +5770,8 @@ function checkMockImports() {
   Promise.all([
     // TODO negative lookbehind not working
     // TODO I'm getting all the .js files - not just the ones for which there are unit tests. Could optimize
-    findInFiles.find('import ', baseDir, /(?:(?!spec\.js$).)*\.js$/),
-    findInFiles.find('jest.mock', baseDir, /\.spec\.js$/)
+    findInFiles.find('import ', baseDir, /(?:(?!spec\.jsx?$).)*\.jsx?$/),
+    findInFiles.find('jest.mock', baseDir, /\.spec\.jsx?$/)
   ]).then(([codeFiles, unitTestFiles]) => {
     for (const mockFileName in unitTestFiles) {
       const realLibFileName = mockFileName.replace(/\.spec/, '');
