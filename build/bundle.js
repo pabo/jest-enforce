@@ -5774,17 +5774,22 @@ function checkMockImports() {
     findInFiles.find('jest.mock', baseDir, /\.spec\.jsx?$/)
   ]).then(([codeFiles, unitTestFiles]) => {
     for (const mockFileName in unitTestFiles) {
-      const realLibFileName = mockFileName.replace(/\.spec/, '');
+      let realLibFileName = mockFileName.replace(/\.spec/, '');
+
+      // If no real file matching the mock, also check if there is a .jsx source matching the .js test
+      if (!codeFiles[realLibFileName]) {
+        realLibFileName = mockFileName.replace(/\.spec\.jsx?$/, '.jsx');
+      }
+      // If there's still no file, warn about no import found
+      if (!codeFiles[realLibFileName]) {
+        _debug(`${mockFileName} found but no matching non-whitelisted source file.`);
+        continue;
+      }
 
       // list of jest.mocks used in the .spec.js
       const mockedLibs = new Set(unitTestFiles[mockFileName].line.map((line) => {
         return line.replace(/.*jest.mock\(['"](.*)['"].*/, '$1');
       }));
-
-      if (!codeFiles[realLibFileName]) {
-        _debug(`${mockFileName} found but no non-whitelisted imports found in ${realLibFileName}`);
-        continue;
-      }
 
       // list of imports used in the .js
       const importedLibs = new Set(codeFiles[realLibFileName].line.map((line) => {
