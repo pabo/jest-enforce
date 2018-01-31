@@ -1,55 +1,48 @@
 ## jest-enforce
-#### Are you mocking me?
+Are you mocking me?
 
 When you run your unit tests, what does your dependency tree look like? Are your unit tests pulling in the actual dependencies of your modules, thereby making them brittle?
 
-Use `jest-enforce` to make sure you're mocking all of your dependencies!
+Use jest-enforce to ensure you're mocking all of your dependencies.
 
-### Install
-```
-npm intall --save-dev jest-enforce
-```
+## Install
+`npm intall --save-dev jest-enforce`
 
-### Use
-I'm using it on the command line
-```
-$ jest-enforce
-```
+## Use
+`jest-enforce <regexForTestFiles>`
 
-### Functionality
-The command line util calls `jestEnforce.checkMockImports()`, which inspects all `.spec` files under `./src` and tells you if you are not mocking modules you should be mocking.
+## Functionality
+The command line util calls `jest <regexForTestFiles> --listTests`, which lists all of the applicable test files to be run. It then runs each of these tests (synchronously, for now) using your jest configuration in package.json (if applicable) and collects their coverage reports. If the coverage report includes files that are not whitelisted for coverage, jest-enforce will warn you via console print out.
 
-For now, this is **non-blocking**, meaning it warns you on the command line but doesn't get in your way.
+<strong>NOTE:</strong> If ANY of your tests fail, jest-enforce will as well. All tests must pass in order for this tool to catch extraneous coverage.
 
-### Configuration
-You can add a configuration to your `package.json` file:
+## Configuration
+You can add a configuration to your package.json file. Here's an example:
 ```
 "jest-enforce": {
-  "whitelistedLibraries": [
-    "react",
-    "react-redux",
-    "styled-components",
-    "lodash",
-    "import {", //TODO this is because I don't yet handle multi line imports
-  ] 
+  "whitelist": ["sourceOfTruth.js$", "src/js/config/**/*.jsx"],
+  "printList": true,
+  "testNameFormat": "(\\.spec|\\.test)"
 }
 ```
 
-I like to add jest-enforce to the end of my `npm run test` command:
-```
-scripts": {
-    "start": "node scripts/start.js",
-    "build-react": "node scripts/build.js",
-    "build": "rm -rf plugin-build && webpack --config build-utils/webpack.build.plugin.js && npm run test",
-    "test": "node scripts/test.js --coverage && jest-enforce",
-  },
-```
+Keep in mind that JSON does not support regex, so these strings are converted when `jest-enforce` is called. Regular expression operators like `\w` need to be escaped: `\\w`.
+
+## Options
+`whitelist: ["<regularExpression>",...]`
+
+If a file path matches one of the expressions in the whitelist it will be excluded from warnings.
+
+`printList: <true/false>`
+
+Print the full list of files getting extraneous coverage. Default is  `true`.
+
+`testNameFormat: "<regularExpression>"`
+
+The format in which your test files are named. This removes a portion of the test file path to match the file path it's testing. For example: `example.spec.js` -> `example.js`. As mentioned above, JSON does not support regex, so regular expression operators must be escaped. Default assumes the only difference is `.spec` or `.test`: `"(\\.spec|\\.test)(.\\w+$)"`.
 
 
-### TODO
-- [x] allow configuration
-  - [x] what imports are OK to ignore
-- [x] colorize output
-- [ ] direct imports in .spec files will import `__mocks__` if they exist, so should be considered fine
-- [ ] fix multiline import statements
-- [ ] importing the same module via different paths doesn't match
+### TODO:
+- [ ] Determine performance bottlenecks
+- [ ] Whitelist for specific files
+- [ ] Add option for silent mode
