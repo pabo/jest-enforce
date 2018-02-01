@@ -1,83 +1,263 @@
-import fs from 'fs';
-import findInFiles from 'find-in-files';
-import glob from 'glob';
-var colors = require('colors');
+const fs = require('fs');
+const path = require('path');
+const xml2js = require('xml2js');
+const xmlParser = new xml2js.Parser();
+const findRoot = require('find-root');
 
-// read config from package.json
-const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
-const config = packageJson['jest-enforce'] || {};
+import {
+  errReport,
+  exec,
+  jestIsGlobal,
+  jestIsModule,
+  reportProgress,
+  output,
+  matchesAnExpression
+} from './helpers.js';
+
+// Find the first directory that contains a package.json
+// We will now use that as the root project directory
+const projectRoot = findRoot(process.env.PWD);
+
+// Move our working directory to root
+// so any relative paths in package.json are correct
+process.chdir(projectRoot);
+
+// Get package.json from project root
+// Grab settings for jest-enforce
+// Grab settings for jest
+const packageJson = JSON.parse(fs.readFileSync(projectRoot + '/package.json', 'utf8'));
+const jestEnforceConfig = packageJson['jest-enforce'] || {};
+const jestConfig = packageJson['jest'] || {};
+
+// Make variables with default values from jest-enforce settings
 const {
-  whitelistedLibraries = [],
-  debugEnabled = false,
-  baseDir = './src'
-} = config;
+  whitelist = [],
+  printList = true,
+  testNameFormat = '(\\.spec|\\.test)'
+} = jestEnforceConfig;
 
-//TODO 
-// const manualMocks = glob.sync(`${baseDir}/**/__mocks__/*.js`);
-// const manualNodeMocks = glob.sync(`${baseDir}/../node_modules/**/__mocks__/*.js`);
-// const manuallyMockedCodeFiles = manualMocks.map((mock) => { return mock.replace(/__mocks__\//, '') });
-// console.log(manuallyMockedCodeFiles);
+// If coverage directory is not defined, set it to default
+if (!jestConfig.coverageDirectory){
+  jestConfig.coverageDirectory = path.join(projectRoot + '/coverage');
+}
+const pathToCoverageFile = path.join(jestConfig.coverageDirectory + '/clover.xml');
+// Convert whitelist to array of regular expressions
+const regexWhiteList = whitelist.map((expression) => {
+  return new RegExp(expression, 'i')
+});
+// We only need the clover reporter, overwrite any others for performance
+jestConfig.coverageReporters = ['clover']
 
-// If your module imports from 4 other modules, but your unit test only mocks 1...
-// You're doing it wrong!
-function checkMockImports() {
-  Promise.all([
-    // TODO negative lookbehind not working
-    // TODO I'm getting all the .js files - not just the ones for which there are unit tests. Could optimize
-    findInFiles.find('import ', baseDir, /(?:(?!spec\.jsx?$).)*\.jsx?$/),
-    findInFiles.find('jest.mock', baseDir, /\.spec\.jsx?$/)
-  ]).then(([codeFiles, unitTestFiles]) => {
-    for (const mockFileName in unitTestFiles) {
-      let realLibFileName = mockFileName.replace(/\.spec/, '');
 
-      // If no real file matching the mock, also check if there is a .jsx source matching the .js test
-      if (!codeFiles[realLibFileName]) {
-        realLibFileName = mockFileName.replace(/\.spec\.jsx?$/, '.jsx');
-      }
-      // If there's still no file, warn about no import found
-      if (!codeFiles[realLibFileName]) {
-        _debug(`${mockFileName} found but no matching non-whitelisted source file.`);
-        continue;
-      }
-
-      // list of jest.mocks used in the .spec.js
-      const mockedLibs = new Set(unitTestFiles[mockFileName].line.map((line) => {
-        return line.replace(/.*jest.mock\(['"](.*)['"].*/, '$1');
-      }));
-
-      // list of imports used in the .js
-      const importedLibs = new Set(codeFiles[realLibFileName].line.map((line) => {
-        return line.replace(/.*import.*from ['"](.*)['"].*/, '$1');
-      }));
-
-      // start with the imports and remove the jest.mocks and the whitelist. what's left is unmocked imports!
-      const difference = _differenceWithWhitelist(importedLibs, mockedLibs, whitelistedLibraries);
-
-      if (difference.size) {
-        console.log(`unit test for ${realLibFileName} is missing these mocks: ${_prettifySet(difference)}`.yellow);
-      }
+/**
+ * Passes test scope to _getApplicableTests
+ * If tests are found, calls jest with file and custom config
+ * Reports progress as each test is run and coverage is collected
+ * Re-names paths relative to the project, then sends report to output
+ *
+ * @param  {string} testScope Regular expression for desired jest files
+ */
+async function logExtraneousCoverage(testScope) {
+  _getApplicableTests(testScope).then((testFiles) => {
+    if (!testFiles.length){
+      errReport(`No test files found with test scope '${testScope}'`);
     }
-  }).catch((e) => {
-    console.trace(`error: ${e}`.red);
+
+    output(`${testFiles.length} file${'s'.repeat(testFiles.length != 1)} found`)
+
+    let xmlStrings = []
+    // For each test file found, add a promise to the chain
+    testFiles.reduce((promiseChain,filePath, index) => {
+      return promiseChain.then(() => {
+        return new Promise((resolve, reject) => {
+          // Print progress to console
+          reportProgress(index + 1, testFiles.length);
+
+          // Clean up past coverage
+          if (fs.existsSync(pathToCoverageFile)) {
+            fs.unlinkSync(pathToCoverageFile);
+          }
+
+          // Call the test with our custom jest config
+          exec('jest',[filePath, '--config=' + JSON.stringify(jestConfig), '--coverage',])
+            .then(() => {
+              let data;
+              // Read the coverage file
+              try {
+                data = fs.readFileSync(pathToCoverageFile, 'utf8');
+              } catch (e) {
+                errReport(`Could not read coverage file at ${pathToCoverageFile}: ${e}`);
+                reject();
+              }
+              // We found the XML data, so parse it and add it to our collection
+              xmlParser.parseString(data, (err, xmlString)=>{
+                resolve(xmlStrings.push({filePath, xmlString}));
+              });
+            }).catch((err) => {
+              errReport(`Running Jest on ${filePath} failed: \n\n${err}`);
+            });
+        });
+      });
+    }, Promise.resolve([])).then(() => {
+      // Async work is done
+      // Print completed progress to console
+      reportProgress().complete();
+
+      // Parse all of that XML - get a report on the touched files
+      // fileReports = [{filePath, report: touchedFilesReport},...]
+      const testReports = xmlStrings.map(_parseXmlReport);
+
+      // Clean up fileReports so that all file paths are relative to the project
+      const formattedTestReports = testReports.map((testReport) => {
+        // Clean path of test file
+        let filePath = _getPathRelativeToProject(testReport.filePath);
+        // For each file touched in the report
+        let report = testReport.report.map((touchedFile) => {
+          // Clean the path to that file
+          touchedFile.path = _getPathRelativeToProject(touchedFile.path);
+          return touchedFile
+        })
+
+        return {filePath, report}
+      })
+
+      // Touched does not necessarily mean coverage, so we must explicitly check for coverage
+      const coverageResults = formattedTestReports.map(_getExtraneous);
+
+      // Print findings to console
+      const totalNumExtraneous = coverageResults.map(_printCoverageReport).reduce((value, current) => value + current);
+
+      if (totalNumExtraneous > 0){
+        process.exit(1);
+      } else {
+        process.exit(0);
+      }
+    }).catch((err) => {
+      output(err);
+    });
+    // _collectFileCoverage(testFiles, 0);
+  }).catch((err) => {
+    output(err);
   });
 }
 
-function _debug(message) {
-  if (debugEnabled) {
-    console.log(message.cyan);
+/**
+ * Determines the location of jest module,
+ * calls it with desired tests based on regular expression,
+ * returns an array of paths to applicable test files
+ *
+ * @param  {string} testScope Regular expression for desired jest files
+ * @return {array}            Absolute paths to test files testScope regex
+ */
+async function _getApplicableTests(testScope) {
+  return Promise.all([jestIsGlobal(), jestIsModule()])
+    .then(([isGlobal, isModule]) => {
+      // Get Jest spec files as stdout string
+      if (isGlobal) {
+        return exec('jest', [testScope, '--listTests']);
+      } else if (isModule) {
+        return exec('node', [projectRoot + '/node_modules/jest/bin/jest.js', testScope, '--listTests']);
+      } else {
+        errReport('Could not find Jest installed globally or as a module. Try \'npm i -g jest-cli\'.');
+      }
+    }).then((testFiles) => {
+      return testFiles.split('\n').filter((fileName) => {
+        return fileName.length
+      });
+    }).catch((err) => {
+      output(err);
+    })
+}
+
+
+/**
+ * Parses the XML, grabs coverage information, and converts to JSON format
+ *
+ * @param  {string} filePath  The path to the test file that is the source of the coverage
+ * @param  {string} xmlString String of JSON representing xml file
+ * @return {object}           filePath and its respective coverage report
+ */
+function _parseXmlReport ({filePath, xmlString}) {
+  let xmlJson = JSON.parse(JSON.stringify(xmlString));
+  let touchedPackages = xmlJson.coverage.project[0].metrics[0].package;
+  let touchedFiles = [];
+  let touchedFilesReport = [];
+
+  touchedPackages.forEach(xmlPackage => {
+    // We concatenate because xmlPackage.file is an array
+    // So we unpack and add all of the files
+    touchedFiles = touchedFiles.concat(xmlPackage.file);
+  });
+
+  touchedFiles.forEach((file) => {
+    let path = file['$'].path;
+    let metrics = file.metrics[0]['$'];
+    touchedFilesReport.push({path, metrics});
+  });
+
+  return {filePath, report: touchedFilesReport};
+}
+
+function _getPathRelativeToProject(filePath){
+  return filePath.replace(projectRoot, '');
+}
+
+/**
+ * Checks an array of touched files and removes them if they are excluded by the whiteList
+ * If not, and they received coverage, they are pushed to an array of extraneous files
+ *
+ * @param  {type} filePath description
+ * @param  {type} report   description
+ * @return {type}           description
+ */
+function _getExtraneous({filePath, report}){
+  // Assuming the file ends with .spec.js(x), .test.js(x), or similar, remove that piece
+  const currentFileRegExp = new RegExp(filePath.replace(new RegExp(testNameFormat),''), 'i');
+  let expectedFiles = [currentFileRegExp, ...regexWhiteList];
+
+  const extraneousFiles = report.reduce((prev, currentFile) => {
+    // Check if the file matches any of the expected patterns
+    const isWhitelisted = matchesAnExpression(currentFile.path, expectedFiles);
+    // If it does not match the whitelist and has gotten coverage,
+    // push it to list of extraneous coverage
+    if (!isWhitelisted) {
+      const hasCoverage = parseInt(currentFile.metrics.coveredstatements) ||
+                            parseInt(currentFile.metrics.coveredconditionals) ||
+                            parseInt(currentFile.metrics.coveredmethods);
+      if (hasCoverage) {
+        prev.push(currentFile.path);
+      }
+    }
+
+    return prev
+  }, []);
+
+  return {filePath, extraneousFiles}
+}
+
+
+/**
+ * Sends color formatted warnings to output function
+ *
+ * @param  {string} filePath        Project relative path to the test file
+ * @param  {array}  extraneousFiles An array of paths to files with extraneous coverage
+ */
+function _printCoverageReport({filePath, extraneousFiles}){
+  if (extraneousFiles.length > 0) {
+    output('\n✘ '.red.bold + `${filePath}`);
+    if (printList){
+      output(`${extraneousFiles.length} unexpected files with coverage:`.red);
+      extraneousFiles.forEach((file, index) => {
+        output(`${index + 1} - ${file}`.red);
+      });
+    } else {
+      output(`${extraneousFiles.length} unexpected files with coverage`.red);
+    }
+  } else {
+    output('\n✓ '.green.bold + `${filePath}`);
   }
+
+  return extraneousFiles.length
 }
 
-function _prettifySet(set) {
-  return [...set].join(", ");
-}
-
-function _differenceWithWhitelist(set1, set2, whitelist) {
-  const whiteSet = new Set(whitelist);
-
-  const difference = new Set([...set1].filter(x => !set2.has(x)));
-
-  return new Set([...difference].filter(x => !whiteSet.has(x)));
-}
-
-exports.checkMockImports = checkMockImports;
+module.exports = logExtraneousCoverage;

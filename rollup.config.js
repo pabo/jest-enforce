@@ -1,3 +1,4 @@
+import babel from 'rollup-plugin-babel';
 import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
 
@@ -7,16 +8,11 @@ export default {
     file: 'build/bundle.js',
     format: 'cjs'
   },
-  external: [
-    // built ins
-    'assert',
-    'events',
-    'fs',
-    'path',
-    'util'
-  ],
   plugins: [
-    resolve(),
+    babel(),
+    resolve({
+      preferBuiltins: true,
+    }),
     commonjs()
   ]
 };
