@@ -4,6 +4,8 @@ const fs$1 = require('fs');
 const promisify = require('util').promisify;
 const execFile = promisify(require('child_process').execFile);
 const colors = require('colors');
+const _has = require('lodash.has');
+const _forEach = require('lodash.foreach');
 
 function errReport(message) {
   const deco = '********';
@@ -59,6 +61,23 @@ function matchesAnExpression(input, regExpressions) {
     }
   }
   return false;
+}
+
+/**
+ * Deep find the values of any objects with a given key
+ *
+ * @param  {object} obj Object to search through
+ * @param  {string} key The desired key to search for
+ * @return {array}      An array of the values that matched 'key'
+ */
+function deepFindKey(obj, key) {
+  if (_has(obj, key)) return [obj[key]];
+
+  var res = [];
+  _forEach(obj, function (v) {
+    if (typeof v == 'object' && (v = deepFindKey(v, key)).length) res.push.apply(res, v);
+  });
+  return res;
 }
 
 const fs = require('fs');
@@ -228,15 +247,8 @@ async function _getApplicableTests(testScope) {
  */
 function _parseXmlReport({ filePath, xmlString }) {
   let xmlJson = JSON.parse(JSON.stringify(xmlString));
-  let touchedPackages = xmlJson.coverage.project[0].metrics[0].package;
-  let touchedFiles = [];
+  let touchedFiles = deepFindKey(xmlJson, 'file')[0]; // Returns an array containing an array
   let touchedFilesReport = [];
-
-  touchedPackages.forEach(xmlPackage => {
-    // We concatenate because xmlPackage.file is an array
-    // So we unpack and add all of the files
-    touchedFiles = touchedFiles.concat(xmlPackage.file);
-  });
 
   touchedFiles.forEach(file => {
     let path = file['$'].path;
@@ -292,12 +304,12 @@ function _printCoverageReport({ filePath, extraneousFiles }) {
   if (extraneousFiles.length > 0) {
     output('\n✘ '.red.bold + `${filePath}`);
     if (printList) {
-      output(`${extraneousFiles.length} unexpected files with coverage:`.red);
+      output(`${extraneousFiles.length} unexpected file${'s'.repeat(extraneousFiles.length != 1)} with coverage:`.red);
       extraneousFiles.forEach((file, index) => {
         output(`${index + 1} - ${file}`.red);
       });
     } else {
-      output(`${extraneousFiles.length} unexpected files with coverage`.red);
+      output(`${extraneousFiles.length} unexpected file${'s'.repeat(extraneousFiles.length != 1)} with coverage`.red);
     }
   } else {
     output('\n✓ '.green.bold + `${filePath}`);

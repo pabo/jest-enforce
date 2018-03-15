@@ -2,6 +2,8 @@ const fs = require('fs');
 const promisify = require('util').promisify;
 const execFile = promisify(require('child_process').execFile);
 const colors = require('colors');
+const _has = require('lodash.has');
+const _forEach = require('lodash.foreach');
 
 export function errReport(message) {
   const deco = '********';
@@ -59,4 +61,23 @@ export function matchesAnExpression(input, regExpressions){
     }
   }
   return false;
+}
+
+/**
+ * Deep find the values of any objects with a given key
+ *
+ * @param  {object} obj Object to search through
+ * @param  {string} key The desired key to search for
+ * @return {array}      An array of the values that matched 'key'
+ */
+export function deepFindKey(obj, key) {
+  if (_has(obj, key))
+    return [obj[key]];
+
+  var res = [];
+  _forEach(obj, function(v) {
+    if (typeof v == 'object' && (v = deepFindKey(v, key)).length)
+      res.push.apply(res, v);
+  });
+  return res;
 }

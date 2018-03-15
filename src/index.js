@@ -11,7 +11,8 @@ import {
   jestIsModule,
   reportProgress,
   output,
-  matchesAnExpression
+  matchesAnExpression,
+  deepFindKey
 } from './helpers.js';
 
 // Find the first directory that contains a package.json
@@ -179,15 +180,8 @@ async function _getApplicableTests(testScope) {
  */
 function _parseXmlReport ({filePath, xmlString}) {
   let xmlJson = JSON.parse(JSON.stringify(xmlString));
-  let touchedPackages = xmlJson.coverage.project[0].metrics[0].package;
-  let touchedFiles = [];
+  let touchedFiles = deepFindKey(xmlJson, 'file')[0]; // Returns an array containing an array
   let touchedFilesReport = [];
-
-  touchedPackages.forEach(xmlPackage => {
-    // We concatenate because xmlPackage.file is an array
-    // So we unpack and add all of the files
-    touchedFiles = touchedFiles.concat(xmlPackage.file);
-  });
 
   touchedFiles.forEach((file) => {
     let path = file['$'].path;
@@ -246,12 +240,12 @@ function _printCoverageReport({filePath, extraneousFiles}){
   if (extraneousFiles.length > 0) {
     output('\n✘ '.red.bold + `${filePath}`);
     if (printList){
-      output(`${extraneousFiles.length} unexpected files with coverage:`.red);
+      output(`${extraneousFiles.length} unexpected file${'s'.repeat(extraneousFiles.length != 1)} with coverage:`.red);
       extraneousFiles.forEach((file, index) => {
         output(`${index + 1} - ${file}`.red);
       });
     } else {
-      output(`${extraneousFiles.length} unexpected files with coverage`.red);
+      output(`${extraneousFiles.length} unexpected file${'s'.repeat(extraneousFiles.length != 1)} with coverage`.red);
     }
   } else {
     output('\n✓ '.green.bold + `${filePath}`);
