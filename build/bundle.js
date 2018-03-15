@@ -302,7 +302,7 @@ function _getExtraneous({ filePath, report }) {
  */
 function _printCoverageReport({ filePath, extraneousFiles }) {
   if (extraneousFiles.length > 0) {
-    output('\n✘ '.red.bold + `${filePath}`);
+    output('✘ '.red.bold + `${filePath}`);
     if (printList) {
       output(`${extraneousFiles.length} unexpected file${'s'.repeat(extraneousFiles.length != 1)} with coverage:`.red);
       extraneousFiles.forEach((file, index) => {
@@ -312,7 +312,7 @@ function _printCoverageReport({ filePath, extraneousFiles }) {
       output(`${extraneousFiles.length} unexpected file${'s'.repeat(extraneousFiles.length != 1)} with coverage`.red);
     }
   } else {
-    output('\n✓ '.green.bold + `${filePath}`);
+    output('✓ '.green.bold + `${filePath}`);
   }
 
   return extraneousFiles.length;
