@@ -5,13 +5,13 @@ const colors = require('colors');
 const _has = require('lodash.has');
 const _forEach = require('lodash.foreach');
 
-export function errReport(message) {
+export function errReport (message) {
   const deco = '********';
   console.log(`\n${deco}\nError\n${deco}\n${message}`.red);
   process.exit(1);
 }
 
-export function directoryExists(filePath) {
+export function directoryExists (filePath) {
   try {
     return fs.statSync(filePath).isDirectory();
   } catch (err) {
@@ -19,7 +19,7 @@ export function directoryExists(filePath) {
   }
 }
 
-export async function exec(cmd, args) {
+export async function exec (cmd, args) {
   const { stdout, stderr } = await execFile(cmd, args);
   return stdout.trim();
 }
@@ -34,8 +34,8 @@ export const jestIsModule = () => {
   return directoryExists('./node_modules/jest')
 };
 
-export function reportProgress(current, total) {
-  if (current && total){
+export function reportProgress (current, total) {
+  if (current && total) {
     process.stdout.clearLine();
     process.stdout.write(`\rProcessing ${current}/${total}`);
   }
@@ -52,10 +52,10 @@ export const output = (message) => {
   console.log(message);
 }
 
-export function matchesAnExpression(input, regExpressions){
-  for (let i = 0; i < regExpressions.length; i++){
+export function matchesAnExpression (input, regExpressions) {
+  for (let i = 0; i < regExpressions.length; i++) {
     // Compare string with all regular expressions in array
-    if (regExpressions[i].test(input)){
+    if (regExpressions[i].test(input)) {
       // The file matched one of the expressions,
       return true;
     }
@@ -70,14 +70,16 @@ export function matchesAnExpression(input, regExpressions){
  * @param  {string} key The desired key to search for
  * @return {array}      An array of the values that matched 'key'
  */
-export function deepFindKey(obj, key) {
-  if (_has(obj, key))
+export function deepFindKey (obj, key) {
+  if (_has(obj, key)) {
     return [obj[key]];
+  }
 
-  var res = [];
-  _forEach(obj, function(v) {
-    if (typeof v == 'object' && (v = deepFindKey(v, key)).length)
+  let res = [];
+  _forEach(obj, (v) => {
+    if (typeof v === 'object' && (v = deepFindKey(v, key)).length) {
       res.push.apply(res, v);
+    }
   });
   return res;
 }
