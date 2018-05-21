@@ -1,0 +1,23 @@
+{
+  "extends": "eslint:recommended",
+  "parserOptions": {
+     "ecmaVersion": 8,
+     "sourceType": "module"
+ },
+ "env": {
+      "browser": false,
+      "node": true,
+      "es6": true,
+      "jest": true,
+  },
+  "rules": {
+    "indent": ["error", 2],
+    "no-console": 0,
+    "no-unused-vars": 1,
+    "quotes": ["error", "single"],
+    "keyword-spacing": "error",
+    "space-before-function-paren": "error",
+    "space-before-blocks": "error",
+    "space-infix-ops": ["error", {"int32Hint": false}]
+    }
+}

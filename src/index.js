@@ -11,7 +11,8 @@ import {
   jestIsModule,
   reportProgress,
   output,
-  matchesAnExpression
+  matchesAnExpression,
+  deepFindKey
 } from './helpers.js';
 
 // Find the first directory that contains a package.json
@@ -37,7 +38,7 @@ const {
 } = jestEnforceConfig;
 
 // If coverage directory is not defined, set it to default
-if (!jestConfig.coverageDirectory){
+if (!jestConfig.coverageDirectory) {
   jestConfig.coverageDirectory = path.join(projectRoot + '/coverage');
 }
 const pathToCoverageFile = path.join(jestConfig.coverageDirectory + '/clover.xml');
@@ -57,9 +58,9 @@ jestConfig.coverageReporters = ['clover']
  *
  * @param  {string} testScope Regular expression for desired jest files
  */
-async function logExtraneousCoverage(testScope) {
+async function logExtraneousCoverage (testScope) {
   _getApplicableTests(testScope).then((testFiles) => {
-    if (!testFiles.length){
+    if (!testFiles.length) {
       errReport(`No test files found with test scope '${testScope}'`);
     }
 
@@ -127,7 +128,7 @@ async function logExtraneousCoverage(testScope) {
       // Print findings to console
       const totalNumExtraneous = coverageResults.map(_printCoverageReport).reduce((value, current) => value + current);
 
-      if (totalNumExtraneous > 0){
+      if (totalNumExtraneous > 0) {
         process.exit(1);
       } else {
         process.exit(0);
@@ -149,7 +150,7 @@ async function logExtraneousCoverage(testScope) {
  * @param  {string} testScope Regular expression for desired jest files
  * @return {array}            Absolute paths to test files testScope regex
  */
-async function _getApplicableTests(testScope) {
+async function _getApplicableTests (testScope) {
   return Promise.all([jestIsGlobal(), jestIsModule()])
     .then(([isGlobal, isModule]) => {
       // Get Jest spec files as stdout string
@@ -179,15 +180,8 @@ async function _getApplicableTests(testScope) {
  */
 function _parseXmlReport ({filePath, xmlString}) {
   let xmlJson = JSON.parse(JSON.stringify(xmlString));
-  let touchedPackages = xmlJson.coverage.project[0].metrics[0].package;
-  let touchedFiles = [];
+  let touchedFiles = deepFindKey(xmlJson, 'file')[0]; // Returns an array containing an array
   let touchedFilesReport = [];
-
-  touchedPackages.forEach(xmlPackage => {
-    // We concatenate because xmlPackage.file is an array
-    // So we unpack and add all of the files
-    touchedFiles = touchedFiles.concat(xmlPackage.file);
-  });
 
   touchedFiles.forEach((file) => {
     let path = file['$'].path;
@@ -198,7 +192,7 @@ function _parseXmlReport ({filePath, xmlString}) {
   return {filePath, report: touchedFilesReport};
 }
 
-function _getPathRelativeToProject(filePath){
+function _getPathRelativeToProject (filePath) {
   return filePath.replace(projectRoot, '');
 }
 
@@ -210,7 +204,7 @@ function _getPathRelativeToProject(filePath){
  * @param  {type} report   description
  * @return {type}           description
  */
-function _getExtraneous({filePath, report}){
+function _getExtraneous ({filePath, report}) {
   // Assuming the file ends with .spec.js(x), .test.js(x), or similar, remove that piece
   const currentFileRegExp = new RegExp(filePath.replace(new RegExp(testNameFormat),''), 'i');
   let expectedFiles = [currentFileRegExp, ...regexWhiteList];
@@ -242,19 +236,19 @@ function _getExtraneous({filePath, report}){
  * @param  {string} filePath        Project relative path to the test file
  * @param  {array}  extraneousFiles An array of paths to files with extraneous coverage
  */
-function _printCoverageReport({filePath, extraneousFiles}){
+function _printCoverageReport ({filePath, extraneousFiles}) {
   if (extraneousFiles.length > 0) {
-    output('\n✘ '.red.bold + `${filePath}`);
-    if (printList){
-      output(`${extraneousFiles.length} unexpected files with coverage:`.red);
+    output('✘ '.red.bold + `${filePath}`);
+    if (printList) {
+      output(`${extraneousFiles.length} unexpected file${'s'.repeat(extraneousFiles.length != 1)} with coverage:`.red);
       extraneousFiles.forEach((file, index) => {
         output(`${index + 1} - ${file}`.red);
       });
     } else {
-      output(`${extraneousFiles.length} unexpected files with coverage`.red);
+      output(`${extraneousFiles.length} unexpected file${'s'.repeat(extraneousFiles.length != 1)} with coverage`.red);
     }
   } else {
-    output('\n✓ '.green.bold + `${filePath}`);
+    output('✓ '.green.bold + `${filePath}`);
   }
 
   return extraneousFiles.length
