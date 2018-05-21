@@ -1,6 +1,6 @@
 {
   "name": "jest-enforce",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Check for inflated coverage due to un-mocked dependencies",
   "main": "build/bundle.js",
   "repository": {
